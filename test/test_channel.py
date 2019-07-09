@@ -3,7 +3,6 @@ import asyncio
 
 import pytest
 
-from chunnel.channel import ChannelJoinFailure, ChannelLeaveFailure
 from chunnel.messages import ChannelEvents
 from chunnel.transports import TransportMessage
 
@@ -24,6 +23,7 @@ def channel(socket):
 
 @pytest.mark.asyncio
 async def test_join(socket, channel):
+
     response, _ = await asyncio.gather(
         channel.join(),
         set_reply(
@@ -32,16 +32,16 @@ async def test_join(socket, channel):
             {'status': 'ok', 'response': sentinel.response}
         )
     )
-    assert response == sentinel.response
+    assert response == ('ok', sentinel.response)
 
 
 @pytest.mark.asyncio
 async def test_join_failure(socket, channel):
-    with pytest.raises(ChannelJoinFailure):
-        await asyncio.gather(
-            channel.join(),
-            set_reply(socket, None, {'status': 'error'})
-        )
+    response, _ = await asyncio.gather(
+        channel.join(),
+        set_reply(socket, None, {'status': 'error'})
+    )
+    assert response == ('error', None)
 
 
 @pytest.mark.asyncio
@@ -62,11 +62,11 @@ async def test_leave_failure(socket, channel):
         channel.join(),
         set_reply(socket, None, {'status': 'ok', 'response': {}})
     )
-    with pytest.raises(ChannelLeaveFailure):
-        await asyncio.gather(
-            channel.leave(),
-            set_reply(socket, None, {'status': 'error'})
-        )
+    response, _ = await asyncio.gather(
+        channel.leave(),
+        set_reply(socket, None, {'status': 'error'})
+    )
+    assert response == ('error', None)
 
 
 @pytest.mark.asyncio
@@ -77,7 +77,7 @@ async def test_context_manager_join(socket):
         )
     )
     # TODO: Not sure about this api...
-    async with socket.channel("test:lobby", {}) as (channel, response):
+    async with socket.channel("test:lobby", {}) as (channel, (_, response)):
         assert response == sentinel.response
         assert channel == socket.channels['test:lobby']
         asyncio.ensure_future(
@@ -107,7 +107,8 @@ async def test_message_replies(socket, channel):
         channel.push(sentinel.event, sentinel.payload),
         set_reply(socket, None, {'status': 'ok', 'response': 'abcd'})
     )
-    response = await sent_message.response()
+    (status, response) = await sent_message.response()
+    assert status == 'ok'
     assert response == 'abcd'
 
 

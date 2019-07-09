@@ -3,13 +3,6 @@ import asyncio
 from .messages import ChannelEvents
 
 
-class ChannelJoinFailure(Exception):
-    pass
-
-
-class ChannelLeaveFailure(Exception):
-    pass
-
 # TODO: Random thought, but _might_ be nice to ditch the
 # mutable-ness of these classes.
 # Like a Channel can be joined or not.
@@ -39,13 +32,7 @@ class Channel:
         join = await self.socket._send_message(
             self.topic, ChannelEvents.join.value, self.params
         )
-        try:
-            response = await join.response()
-        except Exception as e:
-            # TODO: this needs some work.
-            raise ChannelJoinFailure() from e
-
-        return response
+        return await join.response()
 
     async def leave(self):
         '''
@@ -54,11 +41,7 @@ class Channel:
         leave = await self.socket._send_message(
             self.topic, ChannelEvents.leave.value, self.params
         )
-        try:
-            response = await leave.response()
-        except Exception as e:
-            # TODO: this needs some work.
-            raise ChannelLeaveFailure() from e
+        return await leave.response()
 
     async def push(self, event, payload):
         '''
